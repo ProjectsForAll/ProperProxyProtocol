@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ConnectionMixin",
+    "ServerConfigurationPacketListenerImplMixin",
     "ServerConnectionListenerMixin"
   ],
   "client": [],

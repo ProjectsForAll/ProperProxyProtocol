@@ -6,6 +6,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.haproxy.HAProxyMessage;
 import io.netty.handler.codec.haproxy.HAProxyMessageDecoder;
 import io.netty.util.AttributeKey;
+
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
@@ -15,18 +16,35 @@ import java.net.SocketAddress;
  */
 public class ProxyProtocolDecoder extends ChannelInboundHandlerAdapter {
     public static final String NAME = "proxy_protocol_decoder";
+    public static final AttributeKey<SocketAddress> PROXIED_ADDRESS = AttributeKey.valueOf("pptw:proxied_address");
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof ByteBuf buf) {
-            if (isProxyProtocol(buf)) {
-                ctx.pipeline().addAfter(NAME, "haproxy_decoder", new HAProxyMessageDecoder());
+            if (buf.readableBytes() < 6) {
+                if (buf.readableBytes() > 0) {
+                    byte first = buf.getByte(buf.readerIndex());
+                    if (first != 'P' && first != 0x0D) {
+                        ctx.pipeline().remove(this);
+                    } else {
+                        return; // Wait for more bytes
+                    }
+                } else {
+                    return; // Empty buffer
+                }
+            } else if (isProxyProtocol(buf)) {
+                // Add HAProxy handlers. We use a temporary name for the decoder.
+                ctx.pipeline().addAfter(ctx.name(), "haproxy_decoder", new HAProxyMessageDecoder());
                 ctx.pipeline().addAfter("haproxy_decoder", "haproxy_handler", new HAProxyHandler());
-                ctx.pipeline().remove(this);
+                
+                // Pass the buffer to the next handler (haproxy_decoder)
                 super.channelRead(ctx, msg);
+                
+                // Remove this detector as it's no longer needed
+                ctx.pipeline().remove(this);
                 return;
             } else {
-                // Not PROXY protocol, just remove ourselves and continue
+                // Not PROXY protocol
                 ctx.pipeline().remove(this);
             }
         }
@@ -72,19 +90,38 @@ public class ProxyProtocolDecoder extends ChannelInboundHandlerAdapter {
                     
                     if (sourceAddress != null) {
                         InetSocketAddress realAddress = new InetSocketAddress(sourceAddress, sourcePort);
-                        // In Netty, we can't easily change the remoteAddress() of the channel itself as it's often fixed.
-                        // However, Minecraft's Connection object often uses the channel's remoteAddress.
-                        // We might need to wrap the channel or use an attribute that the Mixin can read.
-                        ctx.channel().attr(AttributeKey.<SocketAddress>valueOf("proxied_address")).set(realAddress);
+                        ctx.channel().attr(PROXIED_ADDRESS).set(realAddress);
                     }
                 } finally {
                     haproxyMsg.release();
+                    // Remove this handler immediately
                     ctx.pipeline().remove(this);
-                    ctx.pipeline().remove("haproxy_decoder");
+                    // Safely remove the decoder in the next event loop tick
+                    ctx.executor().execute(() -> {
+                        try {
+                            if (ctx.pipeline().get("haproxy_decoder") != null) {
+                                ctx.pipeline().remove("haproxy_decoder");
+                            }
+                        } catch (Exception ignored) {}
+                    });
                 }
             } else {
                 super.channelRead(ctx, msg);
             }
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            // If the PROXY header is malformed, just remove the handlers and continue
+            // or let the exception propagate to disconnect the client.
+            // For security, it's better to disconnect.
+            try {
+                ctx.pipeline().remove(this);
+                if (ctx.pipeline().get("haproxy_decoder") != null) {
+                    ctx.pipeline().remove("haproxy_decoder");
+                }
+            } catch (Exception ignored) {}
+            super.exceptionCaught(ctx, cause);
         }
     }
 }
