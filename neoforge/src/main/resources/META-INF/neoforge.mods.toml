@@ -3,22 +3,22 @@ loaderVersion="[1,)"
 license="All Rights Reserved"
 
 [[mods]]
-    modId="proxyprotocolthatworks"
+    modId="properproxyprotocol"
     version="${version}"
-    displayName="ProxyProtocolThatWorks"
+    displayName="Proper Proxy Protocol"
     description="Adds proxy protocol support to Minecraft servers."
 
 [[mixins]]
-    config="pptw.mixins.json"
+    config="properproxyprotocol.mixins.json"
 
-[[dependencies.proxyprotocolthatworks]]
+[[dependencies.properproxyprotocol]]
     modId="neoforge"
     type="required"
     versionRange="[21,)"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.proxyprotocolthatworks]]
+[[dependencies.properproxyprotocol]]
     modId="architectury"
     type="required"
     versionRange="[19.0.0,)"

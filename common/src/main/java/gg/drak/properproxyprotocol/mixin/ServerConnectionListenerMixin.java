@@ -1,6 +1,6 @@
-package gg.drak.pptw.mixin;
+package gg.drak.properproxyprotocol.mixin;
 
-import gg.drak.pptw.netty.ProxyProtocolDecoder;
+import gg.drak.properproxyprotocol.netty.ProxyProtocolDecoder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import org.spongepowered.asm.mixin.Mixin;
