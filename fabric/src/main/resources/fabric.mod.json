@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "proxyprotocolthatworks",
+  "version": "${version}",
+  "name": "ProxyProtocolThatWorks",
+  "description": "Adds PROXY protocol support to Minecraft servers.",
+  "authors": [
+    "Drak"
+  ],
+  "contact": {},
+  "license": "All Rights Reserved",
+  "icon": "assets/pptw/icon.png",
+  "environment": "dedicated_server",
+  "entrypoints": {
+    "main": [
+      "gg.drak.pptw.fabric.ProxyProtocolThatWorksFabric"
+    ]
+  },
+  "mixins": [
+    "pptw.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": ">=1.20",
+    "architectury": ">=19.0.0"
+  }
+}
